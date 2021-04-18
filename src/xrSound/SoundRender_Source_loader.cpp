@@ -32,8 +32,8 @@ void CSoundRender_Source::decompress(u32 line, OggVorbis_File* ovf)
 {
     VERIFY(ovf);
     // decompression of one cache-line
-    u32 line_size = SoundRender->cache.get_linesize();
-    auto dest = (pstr)SoundRender->cache.get_dataptr(CAT, line);
+    u32 line_size = ((CSoundRender_Core*)SoundRender)->cache.get_linesize();
+    auto dest = (pstr)((CSoundRender_Core*)SoundRender)->cache.get_dataptr(CAT, line);
     u32 buf_offs = (line * line_size) / 2 / m_wformat.nChannels;
     u32 left_file = dwBytesTotal - buf_offs;
     u32 left = (u32)std::min(left_file, line_size);
@@ -149,7 +149,7 @@ bool CSoundRender_Source::load(pcstr name, bool replaceWithNoSound /*= true*/)
     if (soundExist || replaceWithNoSound)
     {
         LoadWave(fn);
-        SoundRender->cache.cat_create(CAT, dwBytesTotal);
+        ((CSoundRender_Core*)SoundRender)->cache.cat_create(CAT, dwBytesTotal);
     }
 
     return soundExist;
@@ -157,7 +157,7 @@ bool CSoundRender_Source::load(pcstr name, bool replaceWithNoSound /*= true*/)
 
 void CSoundRender_Source::unload()
 {
-    SoundRender->cache.cat_destroy(CAT);
+    ((CSoundRender_Core*)SoundRender)->cache.cat_destroy(CAT);
     fTimeTotal = 0.0f;
     dwBytesTotal = 0;
 }

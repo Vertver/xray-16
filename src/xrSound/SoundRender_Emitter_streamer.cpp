@@ -42,7 +42,7 @@ void CSoundRender_Emitter::fill_data(u8* _dest, u32 offset, u32 size)
     //	Msg			("Final: %d - %d",size,size-left);
     /*/
     //*
-    u32 line_size = SoundRender->cache.get_linesize();
+    u32 line_size = ((CSoundRender_Core*)SoundRender)->cache.get_linesize();
     u32 line = offset / line_size;
 
     // prepare for first line (it can be unaligned)
@@ -52,14 +52,14 @@ void CSoundRender_Emitter::fill_data(u8* _dest, u32 offset, u32 size)
     while (size)
     {
         // cache access
-        if (SoundRender->cache.request(source()->CAT, line))
+        if (((CSoundRender_Core*)SoundRender)->cache.request(source()->CAT, line))
         {
             source()->decompress(line, target->get_data());
         }
 
         // fill block
         u32 blk_size = std::min(size, line_amount);
-        u8* ptr = (u8*)SoundRender->cache.get_dataptr(source()->CAT, line);
+        u8* ptr = (u8*)((CSoundRender_Core*)SoundRender)->cache.get_dataptr(source()->CAT, line);
         CopyMemory(_dest, ptr + line_offs, blk_size);
 
         // advance

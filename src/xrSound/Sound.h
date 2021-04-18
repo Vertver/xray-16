@@ -258,6 +258,7 @@ specific sub-systems
 class ref_sound
 {
 public:
+    void* sound_state = nullptr;
     ref_sound_data_ptr _p;
 
     ref_sound() = default;

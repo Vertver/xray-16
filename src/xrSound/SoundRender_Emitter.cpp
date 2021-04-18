@@ -61,11 +61,11 @@ void CSoundRender_Emitter::Event_ReleaseOwner()
     if (!owner_data)
         return;
 
-    for (u32 it = 0; it < SoundRender->s_events.size(); it++)
+    for (u32 it = 0; it < ((CSoundRender_Core*)SoundRender)->s_events.size(); it++)
     {
-        if (owner_data == SoundRender->s_events[it].first)
+        if (owner_data == ((CSoundRender_Core*)SoundRender)->s_events[it].first)
         {
-            SoundRender->s_events.erase(SoundRender->s_events.begin() + it);
+            ((CSoundRender_Core*)SoundRender)->s_events.erase(((CSoundRender_Core*)SoundRender)->s_events.begin() + it);
             it--;
         }
     }
@@ -80,7 +80,7 @@ void CSoundRender_Emitter::Event_Propagade()
         return;
     if (0 == owner_data->g_object)
         return;
-    if (0 == SoundRender->Handler)
+    if (0 == ((CSoundRender_Core*)SoundRender)->Handler)
         return;
 
     VERIFY(_valid(p_source.volume));
@@ -91,7 +91,7 @@ void CSoundRender_Emitter::Event_Propagade()
         return;
 
     // Inform objects
-    SoundRender->s_events.emplace_back(owner_data, range);
+    ((CSoundRender_Core*)SoundRender)->s_events.emplace_back(owner_data, range);
 }
 
 void CSoundRender_Emitter::switch_to_2D()
@@ -105,7 +105,7 @@ u32 CSoundRender_Emitter::play_time()
 {
     if (m_current_state == stPlaying || m_current_state == stPlayingLooped || m_current_state == stSimulating ||
         m_current_state == stSimulatingLooped)
-        return iFloor((SoundRender->fTimer_Value - fTimeStarted) * 1000.0f);
+        return iFloor((((CSoundRender_Core*)SoundRender)->fTimer_Value - fTimeStarted) * 1000.0f);
     return 0;
 }
 
@@ -119,8 +119,8 @@ void CSoundRender_Emitter::set_cursor(u32 p)
         u32 bt = ((CSoundRender_Source*)owner_data->handle)->dwBytesTotal;
         if (m_stream_cursor >= m_cur_handle_cursor + bt)
         {
-            SoundRender->i_destroy_source((CSoundRender_Source*)owner_data->handle);
-            owner_data->handle = SoundRender->i_create_source(owner_data->fn_attached[0].c_str());
+            ((CSoundRender_Core*)SoundRender)->i_destroy_source((CSoundRender_Source*)owner_data->handle);
+            owner_data->handle = ((CSoundRender_Core*)SoundRender)->i_create_source(owner_data->fn_attached[0].c_str());
             owner_data->fn_attached[0] = owner_data->fn_attached[1];
             owner_data->fn_attached[1] = "";
             m_cur_handle_cursor = get_cursor(true);

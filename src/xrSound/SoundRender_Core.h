@@ -160,4 +160,4 @@ public:
     void env_apply();
 };
 
-extern CSoundRender_Core* SoundRender;
+extern ISoundManager* SoundRender;

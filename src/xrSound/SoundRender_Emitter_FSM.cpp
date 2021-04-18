@@ -22,8 +22,8 @@ inline u32 calc_cursor(const float& fTimeStarted, float& fTime, const float& fTi
 
 void CSoundRender_Emitter::update(float dt)
 {
-    float fTime = SoundRender->fTimer_Value;
-    float fDeltaTime = SoundRender->fTimer_Delta;
+    float fTime = ((CSoundRender_Core*)SoundRender)->fTimer_Value;
+    float fDeltaTime = ((CSoundRender_Core*)SoundRender)->fTimer_Delta;
 
     VERIFY2(!!(owner_data) || (!(owner_data) && (m_current_state == stStopped)), "owner");
     VERIFY2(owner_data ? *(int*)(&owner_data->feedback) : 1, "owner");
@@ -31,7 +31,7 @@ void CSoundRender_Emitter::update(float dt)
     if (bRewind)
     {
         if (target)
-            SoundRender->i_rewind(this);
+            ((CSoundRender_Core*)SoundRender)->i_rewind(this);
         bRewind = FALSE;
     }
 
@@ -52,16 +52,16 @@ void CSoundRender_Emitter::update(float dt)
         fTimeToStop = fTime + get_length_sec();
         fTimeToPropagade = fTime;
         fade_volume = 1.f;
-        occluder_volume = SoundRender->get_occlusion(p_source.position, .2f, occluder);
+        occluder_volume = ((CSoundRender_Core*)SoundRender)->get_occlusion(p_source.position, .2f, occluder);
         smooth_volume = p_source.base_volume * p_source.volume *
             (owner_data->s_type == st_Effect ? psSoundVEffects * psSoundVFactor : psSoundVMusic) *
             (b2D ? 1.f : occluder_volume);
-        e_current = e_target = *SoundRender->get_environment(p_source.position);
+        e_current = e_target = *((CSoundRender_Core*)SoundRender)->get_environment(p_source.position);
         if (update_culling(dt))
         {
             m_current_state = stPlaying;
             set_cursor(0);
-            SoundRender->i_start(this);
+            ((CSoundRender_Core*)SoundRender)->i_start(this);
         }
         else
             m_current_state = stSimulating;
@@ -84,12 +84,12 @@ void CSoundRender_Emitter::update(float dt)
         smooth_volume = p_source.base_volume * p_source.volume *
             (owner_data->s_type == st_Effect ? psSoundVEffects * psSoundVFactor : psSoundVMusic) *
             (b2D ? 1.f : occluder_volume);
-        e_current = e_target = *SoundRender->get_environment(p_source.position);
+        e_current = e_target = *((CSoundRender_Core*)SoundRender)->get_environment(p_source.position);
         if (update_culling(dt))
         {
             m_current_state = stPlayingLooped;
             set_cursor(0);
-            SoundRender->i_start(this);
+            ((CSoundRender_Core*)SoundRender)->i_start(this);
         }
         else
             m_current_state = stSimulatingLooped;
@@ -99,7 +99,7 @@ void CSoundRender_Emitter::update(float dt)
         {
             if (target)
             {
-                SoundRender->i_stop(this);
+                ((CSoundRender_Core*)SoundRender)->i_stop(this);
                 m_current_state = stSimulating;
             }
             fTimeStarted += fDeltaTime;
@@ -111,7 +111,7 @@ void CSoundRender_Emitter::update(float dt)
         {
             // STOP
             m_current_state = stStopped;
-            SoundRender->i_stop(this);
+            ((CSoundRender_Core*)SoundRender)->i_stop(this);
         }
         else
         {
@@ -119,7 +119,7 @@ void CSoundRender_Emitter::update(float dt)
             {
                 // switch to: SIMULATE
                 m_current_state = stSimulating; // switch state
-                SoundRender->i_stop(this);
+                ((CSoundRender_Core*)SoundRender)->i_stop(this);
             }
             else
             {
@@ -157,7 +157,7 @@ void CSoundRender_Emitter::update(float dt)
                                                                             source()->m_wformat);
                                 set_cursor					(ptr);
                 */
-                SoundRender->i_start(this);
+                ((CSoundRender_Core*)SoundRender)->i_start(this);
             }
         }
         break;
@@ -166,7 +166,7 @@ void CSoundRender_Emitter::update(float dt)
         {
             if (target)
             {
-                SoundRender->i_stop(this);
+                ((CSoundRender_Core*)SoundRender)->i_stop(this);
                 m_current_state = stSimulatingLooped;
             }
             fTimeStarted += fDeltaTime;
@@ -177,7 +177,7 @@ void CSoundRender_Emitter::update(float dt)
         {
             // switch to: SIMULATE
             m_current_state = stSimulatingLooped; // switch state
-            SoundRender->i_stop(this);
+            ((CSoundRender_Core*)SoundRender)->i_stop(this);
         }
         else
         {
@@ -199,7 +199,7 @@ void CSoundRender_Emitter::update(float dt)
             u32 ptr = calc_cursor(fTimeStarted, fTime, get_length_sec(), source()->m_wformat);
             set_cursor(ptr);
 
-            SoundRender->i_start(this);
+            ((CSoundRender_Core*)SoundRender)->i_start(this);
         }
         break;
     }
@@ -289,7 +289,7 @@ bool CSoundRender_Emitter::update_culling(float dt)
     if (target)
         return TRUE;
     else
-        return SoundRender->i_allow_play(this);
+        return ((CSoundRender_Core*)SoundRender)->i_allow_play(this);
 }
 
 float CSoundRender_Emitter::priority()
@@ -303,6 +303,6 @@ float CSoundRender_Emitter::priority()
 void CSoundRender_Emitter::update_environment(float dt)
 {
     if (bMoved)
-        e_target = *SoundRender->get_environment(p_source.position);
+        e_target = *((CSoundRender_Core*)SoundRender)->get_environment(p_source.position);
     e_current.lerp(e_current, e_target, dt);
 }
