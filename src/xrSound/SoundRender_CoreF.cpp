@@ -98,35 +98,6 @@ public:
     float priority() { return 0.f; }
     void start(ref_sound* _owner, bool _loop, float delay) 
     { 
-       /*
-        *    
-            starting_delay = delay;
-
-             VERIFY(_owner);
-             owner_data = _owner->_p;
-             VERIFY(owner_data);
-             //	source					= (CSoundRender_Source*)owner_data->handle;
-             p_source.position.set(0, 0, 0);
-             p_source.min_distance = source()->m_fMinDist; // DS3D_DEFAULTMINDISTANCE;
-             p_source.max_distance = source()->m_fMaxDist; // 300.f;
-             p_source.base_volume = source()->m_fBaseVolume; // 1.f
-             p_source.volume = 1.f; // 1.f
-             p_source.freq = 1.f;
-             p_source.max_ai_distance = source()->m_fMaxAIDist; // 300.f;
-
-             if (fis_zero(delay, EPS_L))
-             {
-                 m_current_state = _loop ? stStartingLooped : stStarting;
-             }
-             else
-             {
-                 m_current_state = _loop ? stStartingLoopedDelayed : stStartingDelayed;
-                 fTimeToPropagade = SoundRender->Timer.GetElapsed_sec();
-             }
-             bStopping = FALSE;
-             bRewind = FALSE;
-       */
-
         VERIFY(_owner);
         CurrentEvent = (xrEventInstance*)_owner->sound_state;
         VERIFY(CurrentEvent);
@@ -143,11 +114,28 @@ public:
     void update(float dt) {}
     bool update_culling(float dt) { return false; }
     void update_environment(float dt) {}
-    void rewind() {}
+    void rewind() 
+    {
+        CurrentEvent->setTimelinePosition(0);
+        CurrentEvent->start();
+    }
     void stop(bool isDeffered) override {}
     void pause(bool bVal, int id) {}
 
-    u32 play_time() override { return 0; }
+    u32 play_time() override
+    {
+        FMOD_STUDIO_PLAYBACK_STATE currentState = {};
+        VERIFY(CurrentEvent->getPlaybackState(&currentState) == FMOD_OK);
+
+        if (currentState == FMOD_STUDIO_PLAYBACK_PLAYING || currentState == FMOD_STUDIO_PLAYBACK_STARTING)
+        {
+            int pos = 0;
+            CurrentEvent->getTimelinePosition(&pos);
+            return pos;
+        }
+
+        return 0;
+    }
 
     ~CSoundRender_EmitterFmod() {}
 };
@@ -157,7 +145,7 @@ CSoundRender_CoreF* SoundRenderF = nullptr;
 
 CSoundRender_CoreF::CSoundRender_CoreF()
 {
-
+   
 }
 
 CSoundRender_CoreF::~CSoundRender_CoreF() {}
@@ -200,6 +188,8 @@ xr_string
 ConvertXrayPathToFmodPath(const char* EventPath)
 {
     xr_string returnString(EventPath);
+    std::replace(returnString.begin(), returnString.end(), '\\', '/');        
+    returnString = "event:/" + returnString;
     return returnString;
 }
 
@@ -208,7 +198,7 @@ CSoundRender_CoreF::CreateEventFromPath(const char* EventPath)
 {
     FMOD::Studio::EventDescription* eventDescription = NULL;
     xr_string TempEventPath = ConvertXrayPathToFmodPath(EventPath);
-    VERIFY(SoundSystem->getEvent(TempEventPath.c_str(), &eventDescription) == FMOD_OK);
+    SoundSystem->getEvent(TempEventPath.c_str(), &eventDescription);
     if (eventDescription == nullptr)
     {
         Msg("* SOUND: Can't load event with \"%s\" path", EventPath);
@@ -259,7 +249,9 @@ void CSoundRender_CoreF::_initialize()
 
     // Get path to master bank and try to load it
     string_path MasterBankPath = {};
-    FS.update_path(MasterBankPath, "$game_sounds$", "$Master.bank");
+    FS.update_path(MasterBankPath, "$game_sounds$", "Master.bank");
+    R_ASSERT(SoundSystem->loadBankFile(MasterBankPath, FMOD_STUDIO_LOAD_BANK_NORMAL, &MasterBank) == FMOD_OK);
+    FS.update_path(MasterBankPath, "$game_sounds$", "Master.strings.bank");
     R_ASSERT(SoundSystem->loadBankFile(MasterBankPath, FMOD_STUDIO_LOAD_BANK_NORMAL, &MasterBank) == FMOD_OK);
     StudioBanks["Master"] = MasterBank;
 }
@@ -292,7 +284,16 @@ bool CSoundRender_CoreF::create(
     if (S._handle() == nullptr && !replaceWithNoSound)
         S._p = nullptr; // no reason to keep it
 
-    S.sound_state = CreateEventFromPath(fName);
+    if ((S.sound_state = CreateEventFromPath(fName)) == nullptr)
+    {
+        return false;
+    }
+
+    //CSoundRender_EmitterFmod* E = xr_new<CSoundRender_EmitterFmod>((xrEventInstance*)S.sound_state);
+    //S._p->feedback = E;
+
+    S._p->feedback = nullptr;
+
     return S._handle() != nullptr;
 }
 

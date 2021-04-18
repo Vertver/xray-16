@@ -32,7 +32,12 @@ CUISequenceVideoItem::CUISequenceVideoItem(CUISequencer* owner) : CUISequenceIte
 CUISequenceVideoItem::~CUISequenceVideoItem()
 {
     for (ref_sound& channel : m_sound)
-        channel.stop();
+    {
+        if (channel._handle())
+        {
+            channel.stop();
+        }
+    }
     delete_data(m_wnd);
     delete_data(m_wnd_bg);
 }
@@ -92,31 +97,45 @@ void CUISequenceVideoItem::Load(CUIXml* xml, int idx)
 
     cpcstr snd_name = xml->Read("sound", 0, "");
 
-    if (snd_name && snd_name[0])
+    if (strstr(Core.Params, "-fmod"))
     {
-        string_path _l, _r;
-        strconcat(sizeof(_l), _l, snd_name, "_l");
-        strconcat(sizeof(_r), _r, snd_name, "_r");
-
-        bool found[channels_count + 1];
-        ref_sound separated[channels_count];
-        found[0] = separated[0].create(_l, st_Effect, sg_Undefined, false);
-        found[1] = separated[1].create(_r, st_Effect, sg_Undefined, false);
-
-        ref_sound one;
-        found[channels_count] = one.create(snd_name, st_Effect, sg_Undefined, !(found[0] && found[1]));
-
-        if (!found[channels_count] && found[0] && found[1])
+        if (snd_name && snd_name[0])
         {
-            m_sound[0] = separated[0];
-            m_sound[1] = separated[1];
+            ref_sound separated = {};
+            if (separated.create(snd_name, st_Effect, sg_Undefined, false))
+            {
+                m_sound[0] = separated;
+            }
         }
-        else
+    }
+    else
+    {
+        if (snd_name && snd_name[0])
         {
-            m_sound[0] = one;
-        }
+            string_path _l, _r;
+            strconcat(sizeof(_l), _l, snd_name, "_l");
+            strconcat(sizeof(_r), _r, snd_name, "_r");
 
-        VERIFY(m_sound[0]._handle() || strstr(Core.Params, "-nosound"));
+            bool found[channels_count + 1];
+            ref_sound separated[channels_count];
+            found[0] = separated[0].create(_l, st_Effect, sg_Undefined, false);
+            found[1] = separated[1].create(_r, st_Effect, sg_Undefined, false);
+
+            ref_sound one;
+            found[channels_count] = one.create(snd_name, st_Effect, sg_Undefined, !(found[0] && found[1]));
+
+            if (!found[channels_count] && found[0] && found[1])
+            {
+                m_sound[0] = separated[0];
+                m_sound[1] = separated[1];
+            }
+            else
+            {
+                m_sound[0] = one;
+            }
+
+            VERIFY(m_sound[0]._handle() || strstr(Core.Params, "-nosound"));
+        }
     }
 
     xml->SetLocalRoot(_stored_root);
@@ -148,42 +167,80 @@ void CUISequenceVideoItem::Update()
     else
         return;
 
-    const u32 sync_tm = (0 == m_sound[0]._handle()) ? Device.dwTimeContinual :
-                                             (m_sound[0]._feedback() ? m_sound[0]._feedback()->play_time() : m_sync_time);
-    m_sync_time = sync_tm;
-    // processing A&V
-
-    if (m_texture->HasTexture())
+    if (strstr(Core.Params, "-fmod"))
     {
-        const BOOL is_playing = m_sound[0]._handle() ? !!m_sound[0]._feedback() : m_texture->video_IsPlaying();
-        if (is_playing)
-        {
-            m_texture->video_Sync(m_sync_time);
-        }
-        else
-        {
-            // sync start
-            if (m_flags.test(etiNeedStart))
-            {
-                if (m_sound[1]._handle())
-                {
-                    m_sound[0].play_at_pos(nullptr, Fvector().set(-0.5f, 0.f, 0.3f), sm_2D);
-                    m_sound[1].play_at_pos(nullptr, Fvector().set(+0.5f, 0.f, 0.3f), sm_2D);
-                }
-                else
-                {
-                    m_sound[0].play_at_pos(nullptr, Fvector().set(0.0f, 0.f, 0.0f), sm_2D);
-                }
+        const u32 sync_tm = (0 == m_sound[0]._handle()) ?
+            Device.dwTimeContinual :
+            (m_sound[0]._feedback() ? m_sound[0]._feedback()->play_time() : m_sync_time);
+        m_sync_time = sync_tm;
+        // processing A&V
 
-                m_texture->video_Play(FALSE, m_sync_time);
-                m_flags.set(etiNeedStart, FALSE);
-                CUIWindow* w = m_owner->MainWnd()->FindChild("back");
-                if (w)
-                    w->Show(!!m_flags.test(etiBackVisible));
+        if (m_texture->HasTexture())
+        {
+            const BOOL is_playing = m_sound[0]._handle() ? !!m_sound[0]._feedback() : m_texture->video_IsPlaying();
+            if (is_playing)
+            {
+                m_texture->video_Sync(m_sync_time);
             }
             else
             {
-                m_flags.set(etiPlaying, FALSE);
+                // sync start
+                if (m_flags.test(etiNeedStart))
+                {
+                    m_sound[0].play_at_pos(nullptr, Fvector().set(0.0f, 0.f, 0.0f), sm_2D);
+                    m_texture->video_Play(FALSE, m_sync_time);
+                    m_flags.set(etiNeedStart, FALSE);
+                    CUIWindow* w = m_owner->MainWnd()->FindChild("back");
+                    if (w)
+                        w->Show(!!m_flags.test(etiBackVisible));
+                }
+                else
+                {
+                    m_flags.set(etiPlaying, FALSE);
+                }
+            }
+        }
+    }
+    else
+    {
+        const u32 sync_tm = (0 == m_sound[0]._handle()) ?
+            Device.dwTimeContinual :
+            (m_sound[0]._feedback() ? m_sound[0]._feedback()->play_time() : m_sync_time);
+        m_sync_time = sync_tm;
+        // processing A&V
+
+        if (m_texture->HasTexture())
+        {
+            const BOOL is_playing = m_sound[0]._handle() ? !!m_sound[0]._feedback() : m_texture->video_IsPlaying();
+            if (is_playing)
+            {
+                m_texture->video_Sync(m_sync_time);
+            }
+            else
+            {
+                // sync start
+                if (m_flags.test(etiNeedStart))
+                {
+                    if (m_sound[1]._handle())
+                    {
+                        m_sound[0].play_at_pos(nullptr, Fvector().set(-0.5f, 0.f, 0.3f), sm_2D);
+                        m_sound[1].play_at_pos(nullptr, Fvector().set(+0.5f, 0.f, 0.3f), sm_2D);
+                    }
+                    else
+                    {
+                        m_sound[0].play_at_pos(nullptr, Fvector().set(0.0f, 0.f, 0.0f), sm_2D);
+                    }
+
+                    m_texture->video_Play(FALSE, m_sync_time);
+                    m_flags.set(etiNeedStart, FALSE);
+                    CUIWindow* w = m_owner->MainWnd()->FindChild("back");
+                    if (w)
+                        w->Show(!!m_flags.test(etiBackVisible));
+                }
+                else
+                {
+                    m_flags.set(etiPlaying, FALSE);
+                }
             }
         }
     }
@@ -246,7 +303,13 @@ bool CUISequenceVideoItem::Stop(bool bForce)
         m_owner->MainWnd()->DetachChild(m_wnd);
 
     for (ref_sound& channel : m_sound)
-        channel.stop();
+    {
+        if (channel._handle())
+        {
+            channel.stop();
+        }
+    }
+
     m_texture->ResetTexture();
 
     if (m_flags.test(etiNeedPauseOn) && !m_flags.test(etiStoredPauseState))
